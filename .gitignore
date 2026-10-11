@@ -1,0 +1,13 @@
+.env
+logs/*
+!logs/.gitkeep
+certbot/conf/*
+!certbot/conf/.gitkeep
+certbot/www/*
+!certbot/www/.gitkeep
+
+# Сгенерированные доменные конфиги (кроме служебных)
+conf.d/*
+!conf.d/00-map.conf
+!conf.d/00-bootstrap.conf
+!conf.d/.gitkeep

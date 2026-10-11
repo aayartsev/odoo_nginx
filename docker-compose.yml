@@ -1,0 +1,34 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: odoo-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    env_file:
+      - .env
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./logs:/var/log/nginx
+    networks:
+      - odoo_net
+
+  certbot:
+    image: certbot/certbot
+    container_name: odoo-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    # Автообновление сертификатов раз в 12 часов.
+    # После renew на хосте желательно: docker compose exec nginx nginx -s reload
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h; done"
+    networks:
+      - odoo_net
+
+networks:
+  odoo_net:
+    name: ${ODOO_NET:-odoo-net}
+    external: true

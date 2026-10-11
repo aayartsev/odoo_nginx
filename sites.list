@@ -1,0 +1,5 @@
+# Формат: domain;email;upstream_host;http_port;longpolling_port
+# email пустой → CERTBOT_EMAIL из .env
+
+erp.example.com;;odoo;8069;8072
+erp-dev.example.com;;odoo-dev;8070;8073
