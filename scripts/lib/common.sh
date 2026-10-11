@@ -36,7 +36,8 @@ iter_sites() {
     return 1
   fi
 
-  while IFS= read -r line || [[ -n "$line" ]]; do
+  # FD 3 — чтобы docker compose / certbot не съедали строки списка из stdin
+  while IFS= read -r line <&3 || [[ -n "$line" ]]; do
     line="$(trim "$line")"
     [[ -z "$line" || "$line" == \#* ]] && continue
 
@@ -58,7 +59,7 @@ iter_sites() {
 
     n=$((n + 1))
     "$callback" "$domain" "$email" "$upstream" "$http_port" "$chat_port"
-  done <"$file"
+  done 3<"$file"
 
   if [[ "$n" -eq 0 ]]; then
     echo "В ${file} нет ни одной валидной строки сайта." >&2
@@ -68,7 +69,14 @@ iter_sites() {
 
 has_certificate() {
   local domain="$1"
-  [[ -f "${CERT_LIVE}/${domain}/fullchain.pem" && -f "${CERT_LIVE}/${domain}/privkey.pem" ]]
+  # Обычно live/ принадлежит root и недоступен обычному пользователю —
+  # тогда проверяем через контейнер certbot (том смонтирован как /etc/letsencrypt).
+  if [[ -r "${CERT_LIVE}/${domain}/fullchain.pem" && -r "${CERT_LIVE}/${domain}/privkey.pem" ]]; then
+    return 0
+  fi
+  docker compose -f "${ROOT}/docker-compose.yml" run --rm -T --entrypoint sh certbot \
+    -c "test -r /etc/letsencrypt/live/${domain}/fullchain.pem && test -r /etc/letsencrypt/live/${domain}/privkey.pem" \
+    >/dev/null 2>&1
 }
 
 render_template() {

@@ -66,11 +66,12 @@ docker compose up -d
 Nginx должен слушать 80; DNS доменов → этот сервер.
 
 ```bash
-./scripts/issue-certs.sh          # выпуск по sites.list
+./scripts/issue-certs.sh          # выпуск по sites.list (все домены по очереди)
 ./scripts/issue-certs.sh --force  # принудительный перевыпуск
 ```
 
 После успеха скрипт сам перегенерирует конфиги и сделает reload.
+Если `certbot/conf/live` принадлежит root, наличие сертификата проверяется через контейнер — `sudo` для `generate-sites` не обязателен.
 
 ### Сброс к bootstrap
 

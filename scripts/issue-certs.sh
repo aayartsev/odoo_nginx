@@ -48,6 +48,7 @@ issue_one() {
   local http_port="$4"
   local chat_port="$5"
   local extra=()
+  local ec=0
 
   if [[ -z "$email" ]]; then
     echo "Нет email для ${domain}: укажите в sites.list или CERTBOT_EMAIL в .env" >&2
@@ -59,7 +60,8 @@ issue_one() {
   fi
 
   echo "Сертификат: ${domain} (${email})..."
-  docker compose -f "${ROOT}/docker-compose.yml" run --rm --entrypoint certbot certbot certonly \
+  set +e
+  docker compose -f "${ROOT}/docker-compose.yml" run --rm -T --entrypoint certbot certbot certonly \
     --webroot -w /var/www/certbot \
     -d "${domain}" \
     --email "${email}" \
@@ -67,6 +69,21 @@ issue_one() {
     --no-eff-email \
     --non-interactive \
     "${extra[@]+"${extra[@]}"}"
+  ec=$?
+  set -e
+
+  if [[ "$ec" -eq 0 ]]; then
+    return 0
+  fi
+
+  # Уже выпущен и не требует renew — не роняем весь список
+  if has_certificate "$domain"; then
+    echo "  сертификат уже есть (или не требует обновления), продолжаем"
+    return 0
+  fi
+
+  echo "  ошибка выпуска сертификата для ${domain} (exit ${ec})" >&2
+  return "$ec"
 }
 
 echo "Выпуск сертификатов из ${SITES_LIST}..."
