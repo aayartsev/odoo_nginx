@@ -17,6 +17,7 @@ Nginx перед Odoo в Docker: сайты из списка, генераци�
 | `scripts/generate-sites.sh` | создать/обновить конфиги (`envsubst` / gettext-base) |
 | `scripts/issue-certs.sh` | выпуск/перевыпуск сертификатов |
 | `scripts/reset-bootstrap.sh` | сброс к bootstrap (удалить сгенерированные conf) |
+| `scripts/install-cron.sh` | поставить/убрать cron для renew (пути сами) |
 | `.env` | сеть, email по умолчанию |
 
 ## Формат `sites.list`
@@ -80,11 +81,16 @@ Nginx должен слушать 80; DNS доменов → этот серве
 
 ### Обновление (cron)
 
-Фоновый `certbot renew` в compose + раз в сутки на хосте:
+В compose `certbot` сам вызывает `renew` раз в 12 часов, но без reload nginx.
+Раз в сутки на хосте удобнее поставить задачу через скрипт (абсолютные пути подставит сам):
 
 ```bash
-0 3 * * * /path/to/odoo_nginx/scripts/renew-and-reload.sh >> /path/to/odoo_nginx/logs/renew.log 2>&1
+./scripts/install-cron.sh
+# ./scripts/install-cron.sh --schedule '0 4 * * *'
+# ./scripts/install-cron.sh --remove
 ```
+
+По умолчанию: каждый день в 03:00 → `renew-and-reload.sh` → лог `logs/renew.log`.
 
 ## Типичный сценарий с нуля
 
