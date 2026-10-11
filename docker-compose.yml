@@ -10,6 +10,7 @@ services:
       - .env
     volumes:
       - ./conf.d:/etc/nginx/conf.d:ro
+      - ./html:/usr/share/nginx/html:ro
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
       - ./logs:/var/log/nginx

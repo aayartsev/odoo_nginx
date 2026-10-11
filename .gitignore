@@ -1,4 +1,5 @@
 .env
+sites.list
 logs/*
 !logs/.gitkeep
 certbot/conf/*

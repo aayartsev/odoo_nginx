@@ -7,33 +7,34 @@ Nginx перед Odoo в Docker: сайты из списка, генераци�
 | Путь | Назначение |
 |------|------------|
 | `docker-compose.yml` | `nginx` + `certbot` |
-| `sites.list` | список сайтов (домен;email;host;ports) |
+| `sites.list` | список сайтов (локальный, в git не коммитится) |
+| `sites.list.example` | пример списка |
+| `html/` | страница bootstrap по умолчанию |
 | `templates/` | шаблоны HTTP/HTTPS для генерации |
 | `conf.d/00-map.conf` | общие `map` для websocket |
-| `conf.d/00-bootstrap.conf` | конфиг по умолчанию (без доменов) |
+| `conf.d/00-bootstrap.conf` | default server (ACME + HTML) |
 | `conf.d/<domain>.conf` | генерируются скриптом |
-| `scripts/generate-sites.sh` | создать/обновить конфиги nginx (`envsubst` / gettext-base) |
+| `scripts/generate-sites.sh` | создать/обновить конфиги (`envsubst` / gettext-base) |
 | `scripts/issue-certs.sh` | выпуск/перевыпуск сертификатов |
+| `scripts/reset-bootstrap.sh` | сброс к bootstrap (удалить сгенерированные conf) |
 | `.env` | сеть, email по умолчанию |
 
 ## Формат `sites.list`
 
 ```text
 # domain;email;upstream_host;http_port;longpolling_port
-erp.hostcheckinfo.com;admin@example.com;odoo;8069;8072
-erp-dev.hostcheckinfo.com;;odoo-dev;8070;8073
+erp.example.com;admin@example.com;odoo;8069;8072
+erp-dev.example.com;;odoo-dev;8070;8073
 ```
 
 Пустой `email` → берётся `CERTBOT_EMAIL` из `.env`.  
 `upstream_host` — имя контейнера в сети `odoo-net`.
 
-Пример: `sites.list.example`.
-
 ## Подготовка
 
 ```bash
 docker network create odoo-net   # если ещё нет
-cp sites.list.example sites.list # при необходимости
+cp sites.list.example sites.list
 # отредактируйте sites.list и CERTBOT_EMAIL в .env
 ```
 
@@ -49,7 +50,7 @@ proxy_mode = True
 docker compose up -d
 ```
 
-По умолчанию работает только `00-bootstrap.conf` (порт 80, ACME, заглушка).
+По умолчанию: `00-bootstrap.conf` + страница `html/index.html` (порт 80, ACME).
 
 ### Добавить сайты
 
@@ -70,28 +71,35 @@ Nginx должен слушать 80; DNS доменов → этот серве
 
 После успеха скрипт сам перегенерирует конфиги и сделает reload.
 
-### Обновление (cron)
-
-Фоновый `certbot renew` в compose + раз в сутки:
+### Сброс к bootstrap
 
 ```bash
-0 3 * * * /home/yartsev/projects/odoo_nginx/scripts/renew-and-reload.sh >> /home/yartsev/projects/odoo_nginx/logs/renew.log 2>&1
+./scripts/reset-bootstrap.sh              # удалить сгенерированные conf
+./scripts/reset-bootstrap.sh --purge-certs  # + очистить сертификаты (с подтверждением)
+```
+
+### Обновление (cron)
+
+Фоновый `certbot renew` в compose + раз в сутки на хосте:
+
+```bash
+0 3 * * * /path/to/odoo_nginx/scripts/renew-and-reload.sh >> /path/to/odoo_nginx/logs/renew.log 2>&1
 ```
 
 ## Типичный сценарий с нуля
 
 ```bash
 docker network create odoo-net
-# заполнить sites.list и .env
+cp sites.list.example sites.list   # заполнить
 docker compose up -d nginx
-./scripts/generate-sites.sh    # HTTP-конфиги + ACME на доменах
-./scripts/issue-certs.sh       # сертификаты → HTTPS-конфиги + reload
-docker compose up -d           # поднять certbot renew loop
+./scripts/generate-sites.sh
+./scripts/issue-certs.sh
+docker compose up -d
 ```
 
 ## Правка вручную
 
-Шаблоны — в `templates/`. После правок:
+Шаблоны — в `templates/`, страница bootstrap — в `html/`. После правок шаблонов:
 
 ```bash
 ./scripts/generate-sites.sh
